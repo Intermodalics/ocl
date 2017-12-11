@@ -33,6 +33,7 @@
 #include <rtt/extras/Activities.hpp>
 #include <rtt/extras/SequentialActivity.hpp>
 #include <rtt/extras/FileDescriptorActivity.hpp>
+#include <rtt/internal/ConnectionIntrospector.hpp>
 #include <rtt/marsh/PropertyMarshaller.hpp>
 #include <rtt/marsh/PropertyDemarshaller.hpp>
 #include <rtt/scripting/Scripting.hpp>
@@ -140,6 +141,8 @@ namespace OCL
         this->addOperation("unloadComponent", &DeploymentComponent::unloadComponent, this, ClientThread).doc("Unload a loaded component instance.").arg("Name", "The name of the to be created component");
         this->addOperation("displayComponentTypes", &DeploymentComponent::displayComponentTypes, this, ClientThread).doc("Print out a list of all component types this component can create.");
         this->addOperation("getComponentTypes", &DeploymentComponent::getComponentTypes, this, ClientThread).doc("return a vector of all component types this component can create.");
+        this->addOperation("all_components_port_connections", &DeploymentComponent::listAllPeersPortConnections, this, ClientThread).doc("Logs a list of connections for all ports in all peers.")
+                .arg("depth", "Number of levels to look for: 1 will only list direct connections, more than 1 will also look at connected ports connections.");
 
         this->addOperation("loadConfiguration", &DeploymentComponent::loadConfiguration, this, ClientThread).doc("Load a new XML configuration from a file (identical to loadComponents).").arg("File", "The file which contains the new configuration.");
         this->addOperation("loadConfigurationString", &DeploymentComponent::loadConfigurationString, this, ClientThread).doc("Load a new XML configuration from a string.").arg("Text", "The string which contains the new configuration.");
@@ -2576,4 +2579,17 @@ namespace OCL
             }
     }
 
+    void DeploymentComponent::listAllPeersPortConnections(int depth) const
+    {
+        if (depth < 1) {depth = 1;}
+
+        TaskContext::PeerList peer_list = this->getPeerList();
+        for (size_t i = 0; i < peer_list.size(); ++i) {
+            const std::string& peer_name = peer_list.at(i);
+            TaskContext* peer_ptr = this->getPeer(peer_name);
+            ConnectionIntrospector ci(peer_ptr);
+            ci.createGraph(depth);
+            std::cout << "\n" << ci << std::endl;
+        }
+    }
 }
