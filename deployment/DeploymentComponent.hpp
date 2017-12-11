@@ -242,6 +242,13 @@ namespace OCL
          */
         bool waitForInterrupt();
 
+        /**
+         * Lists all connections of peer components' ports, up to depth levels.
+         * @param depth Levels to explore: 1 (or less) will only explore direct
+         *              connections.
+         */
+        void listAllPeersPortConnections(int depth) const;
+
     public:
         /**
          * Constructs and configures this component.
