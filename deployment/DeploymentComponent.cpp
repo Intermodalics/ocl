@@ -33,6 +33,7 @@
 #include <rtt/extras/Activities.hpp>
 #include <rtt/extras/SequentialActivity.hpp>
 #include <rtt/extras/FileDescriptorActivity.hpp>
+#include <rtt/internal/ConnectionIntrospector.hpp>
 #include <rtt/marsh/PropertyMarshaller.hpp>
 #include <rtt/marsh/PropertyDemarshaller.hpp>
 #include <rtt/scripting/Scripting.hpp>
@@ -140,6 +141,8 @@ namespace OCL
         this->addOperation("unloadComponent", &DeploymentComponent::unloadComponent, this, ClientThread).doc("Unload a loaded component instance.").arg("Name", "The name of the to be created component");
         this->addOperation("displayComponentTypes", &DeploymentComponent::displayComponentTypes, this, ClientThread).doc("Print out a list of all component types this component can create.");
         this->addOperation("getComponentTypes", &DeploymentComponent::getComponentTypes, this, ClientThread).doc("return a vector of all component types this component can create.");
+        this->addOperation("all_components_port_connections", &DeploymentComponent::listAllPeersPortConnections, this, ClientThread).doc("Logs a list of connections for all ports in all peers.")
+                .arg("depth", "Number of levels to look for: 1 will only list direct connections, more than 1 will also look at connected ports connections.");
 
         this->addOperation("loadConfiguration", &DeploymentComponent::loadConfiguration, this, ClientThread).doc("Load a new XML configuration from a file (identical to loadComponents).").arg("File", "The file which contains the new configuration.");
         this->addOperation("loadConfigurationString", &DeploymentComponent::loadConfigurationString, this, ClientThread).doc("Load a new XML configuration from a string.").arg("Text", "The string which contains the new configuration.");
@@ -1540,7 +1543,8 @@ namespace OCL
 
             // do not configure when not stopped.
             if ( peer->getTaskState() > Stopped) {
-                log(Warning) << "Component "<< peer->getName()<< " doesn't need to be configured (already Running)." <<endlog();
+                if (!compmap[comp.getName()].proxy)
+                    log(Warning) << "Component "<< peer->getName()<< " doesn't need to be configured (already Running)." <<endlog();
                 continue;
             }
 
@@ -1946,45 +1950,48 @@ namespace OCL
         std::string  name = cit->first;
 
         if ( it->loaded && it->instance ) {
-            if ( !it->instance->isRunning() ) {
-                if (!it->proxy ) {
+            if (!it->proxy ) {
+                if ( !it->instance->isRunning() ) {
                     // allow subclasses to do cleanup too.
                     componentUnloaded( it->instance );
                     log(Debug) << "Disconnecting " <<name <<endlog();
                     it->instance->disconnect();
                     log(Debug) << "Terminating " <<name <<endlog();
-                } else
-                    log(Debug) << "Removing proxy for " <<name <<endlog();
-
-                // Lookup and erase port+owner from conmap.
-                for( ConMap::iterator cmit = conmap.begin(); cmit != conmap.end(); ++cmit) {
-                    size_t n = 0;
-                    while ( n != cmit->second.owners.size() ) {
-                        if (cmit->second.owners[n] == it->instance ) {
-                            cmit->second.owners.erase( cmit->second.owners.begin() + n );
-                            cmit->second.ports.erase( cmit->second.ports.begin() + n );
-                            n = 0;
-                        } else
-                            ++n;
-                    }
+                } else {
+                    log(Error) << "Could not unload Component "<< name <<": still running." <<endlog();
+                    return false;
                 }
-                // Lookup in the property configuration and remove:
-                RTT::Property<RTT::PropertyBag>* pcomp = root.getPropertyType<PropertyBag>(name);
-                if (pcomp) {
-                    root.removeProperty(pcomp);
-                }
+            } else
+                log(Debug) << "Removing proxy for " <<name <<endlog();
 
-                // Finally, delete the activity before the TC !
-                delete it->act;
-                it->act = 0;
-                ComponentLoader::Instance()->unloadComponent( it->instance );
-                it->instance = 0;
-                log(Info) << "Disconnected and destroyed "<< name <<endlog();
-            } else {
-                log(Error) << "Could not unload Component "<< name <<": still running." <<endlog();
-                valid=false;
+            // Lookup and erase port+owner from conmap.
+            for( ConMap::iterator cmit = conmap.begin(); cmit != conmap.end(); ++cmit) {
+                size_t n = 0;
+                while ( n != cmit->second.owners.size() ) {
+                    if (cmit->second.owners[n] == it->instance ) {
+                        cmit->second.owners.erase( cmit->second.owners.begin() + n );
+                        cmit->second.ports.erase( cmit->second.ports.begin() + n );
+                        n = 0;
+                    } else
+                        ++n;
+                }
             }
+            // Lookup in the property configuration and remove:
+            RTT::Property<RTT::PropertyBag>* pcomp = root.getPropertyType<PropertyBag>(name);
+            if (pcomp) {
+                root.removeProperty(pcomp);
+            }
+
+            // Finally, delete the activity before the TC !
+            // Note: Most likely it->act is a null pointer here and the ownership has already been transfered
+            // to the TaskContext.
+            delete it->act;
+            it->act = 0;
+            ComponentLoader::Instance()->unloadComponent( it->instance );
+            it->instance = 0;
+            log(Info) << "Disconnected and destroyed "<< name <<endlog();
         }
+
         if (valid) {
             // NOTE there is no reason to keep the ComponentData in the vector.
             // actually it may cause errors if we try to re-load the Component later.
@@ -2576,4 +2583,17 @@ namespace OCL
             }
     }
 
+    void DeploymentComponent::listAllPeersPortConnections(int depth) const
+    {
+        if (depth < 1) {depth = 1;}
+
+        TaskContext::PeerList peer_list = this->getPeerList();
+        for (size_t i = 0; i < peer_list.size(); ++i) {
+            const std::string& peer_name = peer_list.at(i);
+            TaskContext* peer_ptr = this->getPeer(peer_name);
+            ConnectionIntrospector ci(peer_ptr);
+            ci.createGraph(depth);
+            std::cout << "\n" << ci << std::endl;
+        }
+    }
 }
