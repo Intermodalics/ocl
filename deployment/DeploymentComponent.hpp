@@ -236,7 +236,7 @@ namespace OCL
          * @param depth Levels to explore: 1 (or less) will only explore direct
          *              connections.
          */
-        void listAllPeersPortConnections(int depth) const;
+        void showPortConnections(int depth) const;
 
     public:
         /**

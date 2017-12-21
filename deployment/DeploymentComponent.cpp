@@ -141,7 +141,8 @@ namespace OCL
         this->addOperation("unloadComponent", &DeploymentComponent::unloadComponent, this, ClientThread).doc("Unload a loaded component instance.").arg("Name", "The name of the to be created component");
         this->addOperation("displayComponentTypes", &DeploymentComponent::displayComponentTypes, this, ClientThread).doc("Print out a list of all component types this component can create.");
         this->addOperation("getComponentTypes", &DeploymentComponent::getComponentTypes, this, ClientThread).doc("return a vector of all component types this component can create.");
-        this->addOperation("all_components_port_connections", &DeploymentComponent::listAllPeersPortConnections, this, ClientThread).doc("Logs a list of connections for all ports in all peers.")
+        this->provides()->removeOperation("showPortConnections");
+        this->addOperation("showPortConnections", &DeploymentComponent::showPortConnections, this, ClientThread).doc("Logs a list of connections for all ports in all peers.")
                 .arg("depth", "Number of levels to look for: 1 will only list direct connections, more than 1 will also look at connected ports connections.");
 
         this->addOperation("loadConfiguration", &DeploymentComponent::loadConfiguration, this, ClientThread).doc("Load a new XML configuration from a file (identical to loadComponents).").arg("File", "The file which contains the new configuration.");
@@ -2579,7 +2580,7 @@ namespace OCL
             }
     }
 
-    void DeploymentComponent::listAllPeersPortConnections(int depth) const
+    void DeploymentComponent::showPortConnections(int depth) const
     {
         if (depth < 1) {depth = 1;}
 
