@@ -2589,12 +2589,14 @@ namespace OCL
         if (depth < 1) {depth = 1;}
 
         TaskContext::PeerList peer_list = this->getPeerList();
+        ConnectionIntrospector ci(this);
         for (size_t i = 0; i < peer_list.size(); ++i) {
             const std::string& peer_name = peer_list.at(i);
             TaskContext* peer_ptr = this->getPeer(peer_name);
-            ConnectionIntrospector ci(peer_ptr);
-            ci.createGraph(depth);
-            std::cout << "\n" << ci << std::endl;
+            ConnectionIntrospector sub_connection(peer_ptr);
+            ci.addSubConnection(sub_connection);
         }
+        ci.createGraph(depth);
+        std::cout << "\n" << ci << std::endl;
     }
 }
