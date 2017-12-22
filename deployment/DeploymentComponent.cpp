@@ -142,8 +142,12 @@ namespace OCL
         this->addOperation("displayComponentTypes", &DeploymentComponent::displayComponentTypes, this, ClientThread).doc("Print out a list of all component types this component can create.");
         this->addOperation("getComponentTypes", &DeploymentComponent::getComponentTypes, this, ClientThread).doc("return a vector of all component types this component can create.");
         this->provides()->removeOperation("showPortConnections");
+        this->provides()->removeOperation("printPortConnectionsGraph");
         this->addOperation("showPortConnections", &DeploymentComponent::showPortConnections, this, ClientThread).doc("Logs a list of connections for all ports in all peers.")
                 .arg("depth", "Number of levels to look for: 1 will only list direct connections, more than 1 will also look at connected ports connections.");
+        this->addOperation("printPortConnectionsGraph", &DeploymentComponent::printPortConnectionsGraph, this, ClientThread).doc("Creates a graph of connections for all ports in all peers.")
+                .arg("depth", "Number of levels to look for: 1 will only list direct connections, more than 1 will also look at connected ports connections.")
+                .arg("file", "Name of the file to save the graph to.");
 
         this->addOperation("loadConfiguration", &DeploymentComponent::loadConfiguration, this, ClientThread).doc("Load a new XML configuration from a file (identical to loadComponents).").arg("File", "The file which contains the new configuration.");
         this->addOperation("loadConfigurationString", &DeploymentComponent::loadConfigurationString, this, ClientThread).doc("Load a new XML configuration from a string.").arg("Text", "The string which contains the new configuration.");
@@ -2598,5 +2602,32 @@ namespace OCL
         }
         ci.createGraph(depth);
         std::cout << "\n" << ci << std::endl;
+    }
+
+    void DeploymentComponent::printPortConnectionsGraph(
+            int depth, const std::string& filename) const
+    {
+        if (depth < 1) {depth = 1;}
+
+        TaskContext::PeerList peer_list = this->getPeerList();
+        ConnectionIntrospector ci(this);
+        for (size_t i = 0; i < peer_list.size(); ++i) {
+            const std::string& peer_name = peer_list.at(i);
+            TaskContext* peer_ptr = this->getPeer(peer_name);
+            ConnectionIntrospector sub_connection(peer_ptr);
+            ci.addSubConnection(sub_connection);
+        }
+        ci.createGraph(depth);
+
+        std::ofstream file;
+        file.open(filename.c_str());
+        if (!file.is_open()) {
+            log(Error) << "Unable to open file '" << filename << "', will print"
+                       << " port connections to stdout" << endlog();
+            ci.toDot(std::cout);
+        } else {
+            ci.toDot(file);
+            file.close();
+        }
     }
 }
