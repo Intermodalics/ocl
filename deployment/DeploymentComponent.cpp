@@ -1363,7 +1363,7 @@ namespace OCL
                 connection->policy.name_id = connection_name;
             }
 
-            if ( connection->ports.size() == 1) {
+            if ( connection->ports.size() == 1 ){
                 string owner = connection->owners[0]->getName();
                 string portname = connection->ports.front()->getName();
                 string porttype = dynamic_cast<InputPortInterface*>(connection->ports.front() ) ? "InputPort" : "OutputPort";
@@ -1384,7 +1384,7 @@ namespace OCL
             // first find all write ports.
             base::PortInterface* writer = 0;
             ConnectionData::Ports::iterator p = connection->ports.begin();
-            
+
             // If one of the ports is connected, use that one as writer to connect to.
             vector<OutputPortInterface*> writers;
             while (p !=connection->ports.end() ) {
