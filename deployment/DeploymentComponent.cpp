@@ -2590,15 +2590,14 @@ namespace OCL
 
     void DeploymentComponent::showPortConnections(int depth) const
     {
-        if (depth < 1) {depth = 1;}
+        if (depth < 1) depth = 1;
 
         TaskContext::PeerList peer_list = this->getPeerList();
         ConnectionIntrospector ci(this);
         for (size_t i = 0; i < peer_list.size(); ++i) {
             const std::string& peer_name = peer_list.at(i);
             TaskContext* peer_ptr = this->getPeer(peer_name);
-            ConnectionIntrospector sub_connection(peer_ptr);
-            ci.addSubConnection(sub_connection);
+            ci.add(peer_ptr);
         }
         ci.createGraph(depth);
         std::cout << "\n" << ci << std::endl;
@@ -2607,15 +2606,14 @@ namespace OCL
     void DeploymentComponent::printPortConnectionsGraph(
             int depth, const std::string& filename) const
     {
-        if (depth < 1) {depth = 1;}
+        if (depth < 1) depth = 1;
 
         TaskContext::PeerList peer_list = this->getPeerList();
         ConnectionIntrospector ci(this);
         for (size_t i = 0; i < peer_list.size(); ++i) {
             const std::string& peer_name = peer_list.at(i);
             TaskContext* peer_ptr = this->getPeer(peer_name);
-            ConnectionIntrospector sub_connection(peer_ptr);
-            ci.addSubConnection(sub_connection);
+            ci.add(peer_ptr);
         }
         ci.createGraph(depth);
 
@@ -2624,9 +2622,9 @@ namespace OCL
         if (!file.is_open()) {
             log(Error) << "Unable to open file '" << filename << "', will print"
                        << " port connections to stdout" << endlog();
-            ci.toDot(std::cout);
+//            ci.toDot(std::cout);
         } else {
-            ci.toDot(file);
+//            ci.toDot(file);
             file.close();
         }
     }
