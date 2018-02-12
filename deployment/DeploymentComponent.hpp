@@ -231,6 +231,13 @@ namespace OCL
          */
         base::PortInterface* stringToPort(std::string const& names);
 
+        /**
+         * Lists all connections of peer components' ports, up to depth levels.
+         * @param depth Levels to explore: 1 (or less) will only explore direct
+         *              connections.
+         */
+        void showPortConnections(int depth) const;
+
     public:
         /**
          * Constructs and configures this component.
